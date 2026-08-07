@@ -1,0 +1,70 @@
+services:
+  pinecone:
+    image: ghcr.io/pinecone-io/pinecone-local:latest
+    platform: linux/amd64
+    environment:
+      PORT: 5080
+      PINECONE_HOST: pinecone
+    ports:
+      - "5080-5090:5080-5090"
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+  ollama-bootstrap:
+    image: ollama/ollama:latest
+    profiles: ["bootstrap"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: nomic-embed-text
+    depends_on:
+      - ollama
+    volumes:
+      - ./scripts/ollama-bootstrap.sh:/scripts/ollama-bootstrap.sh:ro
+      - ./scripts/wait-for-http.sh:/scripts/wait-for-http.sh:ro
+      - ollama-data:/root/.ollama
+    entrypoint: ["/bin/sh", "/scripts/ollama-bootstrap.sh"]
+
+  app:
+    build:
+      context: .
+    command: ["server"]
+    env_file:
+      - path: ./.env
+        required: false
+    depends_on:
+      - pinecone
+      - ollama
+    ports:
+      - "8787:8787"
+    volumes:
+      - ./config.yaml:/app/deployments/dodopayments/config.yaml:ro
+      - ./data:/app/data
+      - ${LOCAL_DOCS_ROOT:-./local-docs-placeholder}:/workspace/repos:ro
+
+  reindex:
+    build:
+      context: .
+    profiles: ["reindex"]
+    command: ["reindex"]
+    # Explicit (even if empty) environment key: some docker compose CLI
+    # versions panic on `run --rm -e VAR ...` when a service has no
+    # `environment:` key at all.
+    environment: {}
+    env_file:
+      - path: ./.env
+        required: false
+    depends_on:
+      - pinecone
+      - ollama
+    volumes:
+      - ./config.yaml:/app/deployments/dodopayments/config.yaml:ro
+      - ./data:/app/data
+      - ${LOCAL_DOCS_ROOT:-./local-docs-placeholder}:/workspace/repos:ro
+
+volumes:
+  ollama-data:

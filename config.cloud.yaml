@@ -1,0 +1,17 @@
+vectordb:
+  provider: pinecone
+  indexName: contextmcp-docs
+  pinecone:
+    cloud: aws
+    region: us-east-1
+
+embeddings:
+  provider: openai
+  model: text-embedding-3-small
+  dimensions: 1536
+
+sources:
+  - name: docs
+    type: github
+    repository: owner/repo
+    parser: mdx

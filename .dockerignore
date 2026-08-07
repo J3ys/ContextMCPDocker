@@ -1,0 +1,10 @@
+.git
+.worktrees
+node_modules
+data
+.env
+.DS_Store
+npm-debug.log*
+docker-compose.override.yml
+coverage
+dist

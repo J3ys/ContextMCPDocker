@@ -1,0 +1,190 @@
+diff --git a/deployments/dodopayments/cloudflare-worker/src/index.ts b/deployments/dodopayments/cloudflare-worker/src/index.ts
+index 6344c35..cd80c8a 100644
+--- a/deployments/dodopayments/cloudflare-worker/src/index.ts
++++ b/deployments/dodopayments/cloudflare-worker/src/index.ts
+@@ -28,8 +28,11 @@ interface Env {
+   GEMINI_API_KEY: string;
+ 
+   // Variables (set in wrangler.jsonc)
++  PINECONE_MODE: string;
++  PINECONE_CONTROLLER_HOST: string;
++  OLLAMA_BASE_URL: string;
+   PINECONE_INDEX_NAME: string;
+-  EMBEDDING_PROVIDER: string; // 'openai' | 'gemini'
++  EMBEDDING_PROVIDER: string; // 'openai' | 'gemini' | 'ollama'
+   EMBEDDING_MODEL: string;
+   EMBEDDING_DIMENSIONS: string;
+   DEFAULT_TOP_K: string;
+@@ -64,6 +67,26 @@ async function generateQueryEmbedding(env: Env, query: string): Promise<number[]
+   const provider = env.EMBEDDING_PROVIDER || 'openai';
+   const dimensions = parseInt(env.EMBEDDING_DIMENSIONS, 10) || 3072;
+ 
++  if (provider === 'ollama') {
++    const baseUrl = (env.OLLAMA_BASE_URL || 'http://ollama:11434').replace(/\/$/, '');
++    const response = await fetch(`${baseUrl}/api/embed`, {
++      method: 'POST',
++      headers: { 'Content-Type': 'application/json' },
++      body: JSON.stringify({ model: env.EMBEDDING_MODEL, input: [query] }),
++    });
++
++    if (!response.ok) {
++      throw new Error(`Ollama embed failed: ${response.status} ${response.statusText}`);
++    }
++
++    const data = (await response.json()) as { embeddings?: number[][] };
++    const embedding = data.embeddings?.[0];
++    if (!embedding) {
++      throw new Error('Ollama embed: unexpected response shape (no embeddings[0])');
++    }
++    return embedding;
++  }
++
+   if (provider === 'gemini') {
+     const gemini = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+     const response = await gemini.models.embedContent({
+@@ -125,6 +148,16 @@ async function rerankWithPinecone(
+   }
+ }
+ 
++async function getPineconeIndex(pinecone: Pinecone, indexName: string, mode: string) {
++  if (mode !== 'local') {
++    return pinecone.index(indexName);
++  }
++
++  const description = await pinecone.describeIndex(indexName);
++  const host = description.host.startsWith('http') ? description.host : `http://${description.host}`;
++  return pinecone.index(indexName, host);
++}
++
+ async function searchDocs(
+   pinecone: Pinecone,
+   env: Env,
+@@ -133,11 +166,11 @@ async function searchDocs(
+ ): Promise<SearchResult[]> {
+   const defaultTopK = parseInt(env.DEFAULT_TOP_K, 10) || 10;
+   const maxTopK = parseInt(env.MAX_TOP_K, 10) || 20;
+-  const rerankEnabled = env.ENABLE_RERANK !== 'false';
++  const rerankEnabled = (env.PINECONE_MODE ?? 'cloud') !== 'local' && env.ENABLE_RERANK !== 'false';
+   const rerankFetchCount = parseInt(env.RERANK_FETCH_COUNT, 10) || 30;
+ 
+   const returnCount = Math.min(Math.max(1, limit ?? defaultTopK), maxTopK);
+-  const index = pinecone.index(env.PINECONE_INDEX_NAME);
++  const index = await getPineconeIndex(pinecone, env.PINECONE_INDEX_NAME, env.PINECONE_MODE ?? 'cloud');
+   const queryEmbedding = await generateQueryEmbedding(env, query);
+ 
+   const fetchCount = rerankEnabled ? rerankFetchCount : returnCount;
+@@ -206,7 +239,13 @@ export class DodoKnowledgeMCP extends McpAgent<Env> {
+     const defaultTopK = parseInt(env.DEFAULT_TOP_K || '10', 10);
+ 
+     // Initialize clients
+-    const pinecone = new Pinecone({ apiKey: env.PINECONE_API_KEY });
++    const pinecone =
++      (env.PINECONE_MODE ?? 'cloud') === 'local'
++        ? new Pinecone({
++            apiKey: env.PINECONE_API_KEY || 'pclocal',
++            controllerHostUrl: env.PINECONE_CONTROLLER_HOST || 'http://pinecone:5080',
++          })
++        : new Pinecone({ apiKey: env.PINECONE_API_KEY });
+ 
+     // Register the search_docs tool
+     this.server.registerTool(
+@@ -428,7 +467,13 @@ export default {
+           });
+         }
+ 
+-        const pinecone = new Pinecone({ apiKey: env.PINECONE_API_KEY });
++        const pinecone =
++          (env.PINECONE_MODE ?? 'cloud') === 'local'
++            ? new Pinecone({
++                apiKey: env.PINECONE_API_KEY || 'pclocal',
++                controllerHostUrl: env.PINECONE_CONTROLLER_HOST || 'http://pinecone:5080',
++              })
++            : new Pinecone({ apiKey: env.PINECONE_API_KEY });
+         const results = await searchDocs(pinecone, env, query, limit);
+         const formatted = formatResults(results, query);
+ 
+diff --git a/packages/template/scripts/reindex.ts b/packages/template/scripts/reindex.ts
+index 4bb5015..587cd35 100644
+--- a/packages/template/scripts/reindex.ts
++++ b/packages/template/scripts/reindex.ts
+@@ -134,6 +134,16 @@ type EmbedClient =
+       model: string;
+     };
+ 
++async function getPineconeIndex(pinecone: Pinecone, indexName: string) {
++  if ((process.env.PINECONE_MODE ?? 'cloud') !== 'local') {
++    return pinecone.index(indexName);
++  }
++
++  const description = await pinecone.describeIndex(indexName);
++  const host = description.host.startsWith('http') ? description.host : `http://${description.host}`;
++  return pinecone.index(indexName, host);
++}
++
+ async function embedAndUpload(
+   chunks: DocChunk[],
+   pinecone: Pinecone,
+@@ -141,7 +151,7 @@ async function embedAndUpload(
+   indexName: string,
+   batchSize: number
+ ): Promise<void> {
+-  const index = pinecone.index(indexName);
++  const index = await getPineconeIndex(pinecone, indexName);
+   const total = chunks.length;
+   let uploaded = 0;
+ 
+@@ -263,7 +273,14 @@ async function reindex(): Promise<void> {
+ 
+   if (!args.dryRun) {
+     validateEmbeddingEnv(config.embeddings.provider);
+-    pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
++    pinecone =
++      (process.env.PINECONE_MODE ?? 'cloud') === 'local'
++        ? new Pinecone({
++            apiKey: process.env.PINECONE_API_KEY || 'pclocal',
++            controllerHostUrl:
++              process.env.PINECONE_CONTROLLER_HOST || 'http://pinecone:5080',
++          })
++        : new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
+ 
+     switch (config.embeddings.provider) {
+       case 'gemini':
+diff --git a/packages/template/src/embeddings/core.ts b/packages/template/src/embeddings/core.ts
+index d5b90d6..70a3896 100644
+--- a/packages/template/src/embeddings/core.ts
++++ b/packages/template/src/embeddings/core.ts
+@@ -326,6 +326,16 @@ export async function initPineconeIndex(
+   }
+ }
+ 
++async function getPineconeIndex(pc: Pinecone, indexName: string) {
++  if ((process.env.PINECONE_MODE ?? 'cloud') !== 'local') {
++    return pc.index(indexName);
++  }
++
++  const description = await pc.describeIndex(indexName);
++  const host = description.host.startsWith('http') ? description.host : `http://${description.host}`;
++  return pc.index(indexName, host);
++}
++
+ /**
+  * Clear all vectors from Pinecone index
+  * Use before full reindex to remove stale vectors
+@@ -337,7 +347,7 @@ export async function clearPineconeIndex(
+   indexName: string
+ ): Promise<{ success: boolean; vectorCount?: number }> {
+   try {
+-    const index = pc.index(indexName);
++    const index = await getPineconeIndex(pc, indexName);
+ 
+     // Get current stats before clearing
+     const stats = await index.describeIndexStats();
+@@ -380,7 +390,7 @@ export async function getPineconeStats(
+   pc: Pinecone,
+   indexName: string
+ ): Promise<{ vectorCount: number; dimension: number }> {
+-  const index = pc.index(indexName);
++  const index = await getPineconeIndex(pc, indexName);
+   const stats = await index.describeIndexStats();
+   return {
+     vectorCount: stats.totalRecordCount || 0,

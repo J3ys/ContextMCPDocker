@@ -1,0 +1,13 @@
+{
+  "name": "contextmcp-dockerized",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dockerized ContextMCP baseline for local documentation indexing",
+  "dependencies": {
+    "@pinecone-database/pinecone": "^6.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
