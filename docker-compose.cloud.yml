@@ -2,6 +2,8 @@ services:
   app:
     build:
       context: .
+      ssh:
+        - default
     command: ["server"]
     env_file:
       - path: ./.env
@@ -18,6 +20,8 @@ services:
   reindex:
     build:
       context: .
+      ssh:
+        - default
     profiles: ["reindex"]
     command: ["reindex"]
     env_file:

@@ -1,11 +1,11 @@
 # ContextMCP Dockerized Setup
 
-This repository wraps the upstream `dodopayments/context-mcp` project and provides two Docker Compose entrypoints:
+This repository wraps the forked `J3ys/context-mcp` project and provides two Docker Compose entrypoints:
 
 - `docker-compose.local.yml` for fully local development with Ollama + Pinecone Local
 - `docker-compose.cloud.yml` for app/reindex flows backed by cloud services
 
-With new changes being made most likely it will be moved to a fork of the upstream project.
+The application logic now lives in the fork, while this repository keeps the Docker, config, and helper-script layer around it.
 
 ## Local mode
 
@@ -161,4 +161,4 @@ docker compose -f docker-compose.cloud.yml up -d app
 - Pinecone Local is development-only.
 - Pinecone Local is in-memory and not production-safe.
 - Pinecone Local records do not persist after shutdown.
-- The Docker image vendors upstream ContextMCP `v0.5.0` and applies a small local-support patch at build time.
+- The Docker image clones `git@github.com:J3ys/context-mcp.git` and builds directly from the fork.

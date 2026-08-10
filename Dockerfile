@@ -2,19 +2,20 @@
 
 FROM node:20-bookworm-slim AS upstream
 
-ARG CONTEXTMCP_REPO=https://github.com/dodopayments/context-mcp.git
-ARG CONTEXTMCP_REF=v0.5.0
+ARG CONTEXTMCP_REPO=git@github.com:J3ys/context-mcp.git
+ARG CONTEXTMCP_REF=main
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends git ca-certificates patch \
+  && apt-get install -y --no-install-recommends git ca-certificates openssh-client \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
-RUN git clone --depth 1 --branch "${CONTEXTMCP_REF}" "${CONTEXTMCP_REPO}" contextmcp
-COPY patches/contextmcp/ /tmp/contextmcp-patches/
+RUN mkdir -p -m 0700 /root/.ssh \
+  && ssh-keyscan github.com >> /root/.ssh/known_hosts
+
+RUN --mount=type=ssh git clone --depth 1 --branch "${CONTEXTMCP_REF}" "${CONTEXTMCP_REPO}" contextmcp
 
 WORKDIR /src/contextmcp
-RUN for patch_file in /tmp/contextmcp-patches/*.patch; do patch -p1 < "$patch_file"; done
 RUN npm ci
 RUN npm --prefix deployments/dodopayments/cloudflare-worker install
 
