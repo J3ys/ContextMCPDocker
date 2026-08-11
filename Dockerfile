@@ -2,7 +2,7 @@
 
 FROM node:20-bookworm-slim AS upstream
 
-ARG CONTEXTMCP_REPO=git@github.com:J3ys/context-mcp.git
+ARG CONTEXTMCP_REPO=https://github.com/J3ys/context-mcp.git
 ARG CONTEXTMCP_REF=main
 
 RUN apt-get update \
@@ -17,7 +17,7 @@ RUN --mount=type=ssh git clone --depth 1 --branch "${CONTEXTMCP_REF}" "${CONTEXT
 
 WORKDIR /src/contextmcp
 RUN npm ci
-RUN npm --prefix deployments/dodopayments/cloudflare-worker install
+RUN npm --prefix deployments/example/cloudflare-worker install
 
 # Hand-pick only the grammar .wasm files this project actually uses (java,
 # typescript, tsx, javascript, python) instead of a large multi-language bundle.
@@ -45,7 +45,7 @@ FROM node:20-bookworm-slim AS runtime
 
 ENV NODE_ENV=production \
   CONTEXTMCP_ROOT=/app \
-  CONTEXTMCP_DEPLOYMENT_DIR=/app/deployments/dodopayments
+  CONTEXTMCP_DEPLOYMENT_DIR=/app/deployments/example
 
 WORKDIR /app
 
@@ -54,7 +54,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=upstream /src/contextmcp/ /app/
-COPY config.example.yaml /app/deployments/dodopayments/config.example.yaml
+COPY config.example.yaml /app/deployments/example/config.example.yaml
 COPY .env.example /app/.env.example
 COPY README.md /app/README.md
 COPY scripts/entrypoint.sh /app/scripts/entrypoint.sh

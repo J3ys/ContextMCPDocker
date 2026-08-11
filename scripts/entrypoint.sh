@@ -13,7 +13,7 @@ case "$command" in
       sh /app/scripts/wait-for-http.sh "${OLLAMA_BASE_URL:-http://ollama:11434}/api/tags" "ollama"
       cd /app
       exec npx wrangler dev \
-        --config deployments/dodopayments/cloudflare-worker/wrangler.jsonc \
+        --config deployments/example/cloudflare-worker/wrangler.jsonc \
         --ip 0.0.0.0 \
         --port "${PORT:-8787}" \
         --local-protocol http \
@@ -28,7 +28,7 @@ case "$command" in
         --var "ENABLE_RERANK:${ENABLE_RERANK:-false}"
     fi
     cd /app
-    exec npm run dev:dodo
+    exec npm run dev:example
     ;;
   reindex)
     exec /app/scripts/reindex.sh "$@"

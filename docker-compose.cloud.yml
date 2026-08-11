@@ -14,7 +14,7 @@ services:
     ports:
       - "8787:8787"
     volumes:
-      - ./config.cloud.yaml:/app/deployments/dodopayments/config.yaml:ro
+      - ./config.cloud.yaml:/app/deployments/example/config.yaml:ro
       - ./data:/app/data
 
   reindex:
@@ -31,5 +31,5 @@ services:
       PINECONE_MODE: cloud
       PINECONE_CONTROLLER_HOST: ""
     volumes:
-      - ./config.cloud.yaml:/app/deployments/dodopayments/config.yaml:ro
+      - ./config.cloud.yaml:/app/deployments/example/config.yaml:ro
       - ./data:/app/data

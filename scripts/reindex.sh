@@ -10,7 +10,7 @@ cd /app
 
 if [ -n "${LOCAL_DOCS_REPOS:-}" ]; then
   sh /app/scripts/generate-local-repos-config.sh /app/config.local-repos-base.yaml /tmp/generated-config.yaml
-  exec npm run reindex:dodo -- --config /tmp/generated-config.yaml "$@"
+  exec npm run reindex:example -- --config /tmp/generated-config.yaml "$@"
 fi
 
-exec npm run reindex:dodo -- "$@"
+exec npm run reindex:example -- "$@"
