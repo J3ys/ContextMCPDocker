@@ -26,7 +26,8 @@ case "$command" in
         --var "PINECONE_MODE:${PINECONE_MODE:-local}" \
         --var "PINECONE_CONTROLLER_HOST:${PINECONE_CONTROLLER_HOST:-http://pinecone:5080}" \
         --var "OLLAMA_BASE_URL:${OLLAMA_BASE_URL:-http://ollama:11434}" \
-        --var "ENABLE_RERANK:${ENABLE_RERANK:-false}"
+        --var "ENABLE_RERANK:${ENABLE_RERANK:-false}" \
+        --var "OPENAI_API_KEY:${OPENAI_API_KEY:-}"
     fi
     cd /app
     exec npm run dev:example
