@@ -8,7 +8,6 @@ backups.zip
 
 # Local config overrides
 config.yaml
-config.local-repos-base.yaml
 .env
 
 # Docs

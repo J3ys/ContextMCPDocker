@@ -1,0 +1,30 @@
+vectordb:
+  provider: pinecone
+  indexName: contextmcp-docs
+  pinecone:
+    cloud: aws
+    region: us-east-1
+
+embeddings:
+  provider: ollama
+  model: nomic-embed-text
+  dimensions: 768
+  ollama:
+    baseUrl: http://ollama:11434
+
+x-common-skip: &commonSkip
+  - .git
+  - .gradle
+  - .idea
+  - node_modules
+  - build
+  - dist
+  - .github
+  - .claude
+  - .opencode
+  - coverage
+  - target
+  - data
+  - log
+  - temp
+  - roles
