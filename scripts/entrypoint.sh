@@ -22,7 +22,7 @@ case "$command" in
         --var "EMBEDDING_PROVIDER:${EMBEDDING_PROVIDER:-ollama}" \
         --var "EMBEDDING_MODEL:${EMBEDDING_MODEL:-${OLLAMA_MODEL:-nomic-embed-text}}" \
         --var "EMBEDDING_DIMENSIONS:${EMBEDDING_DIMENSIONS:-${OLLAMA_DIMENSIONS:-768}}" \
-        --var "PINECONE_API_KEY:${PINECONE_API_KEY:-pclocal}"
+        --var "PINECONE_API_KEY:${PINECONE_API_KEY:-pclocal}" \
         --var "PINECONE_MODE:${PINECONE_MODE:-local}" \
         --var "PINECONE_CONTROLLER_HOST:${PINECONE_CONTROLLER_HOST:-http://pinecone:5080}" \
         --var "OLLAMA_BASE_URL:${OLLAMA_BASE_URL:-http://ollama:11434}" \
