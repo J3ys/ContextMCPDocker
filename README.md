@@ -29,7 +29,13 @@ docker compose -f docker-compose.local.yml up -d pinecone ollama
 docker compose -f docker-compose.local.yml --profile bootstrap run --rm ollama-bootstrap
 ```
 
-   Alternatively, if Ollama is running directly on the host:
+   Or pull it manually into the local Docker Ollama service:
+
+```bash
+docker compose -f docker-compose.local.yml exec ollama ollama pull nomic-embed-text
+```
+
+   If Ollama is running directly on the host:
 
 ```bash
 ollama pull nomic-embed-text
